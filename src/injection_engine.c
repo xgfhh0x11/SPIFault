@@ -112,6 +112,8 @@ bool injection_engine_add_rule(injection_engine_t* engine, const injection_rule_
     return true;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 bool injection_engine_remove_rule(injection_engine_t* engine, const char* rule_name) {
     if (!engine || !rule_name) return false;
     
@@ -131,6 +133,8 @@ bool injection_engine_remove_rule(injection_engine_t* engine, const char* rule_n
     return false;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 bool injection_engine_enable_rule(injection_engine_t* engine, const char* rule_name) {
     if (!engine || !rule_name) return false;
     
@@ -145,6 +149,8 @@ bool injection_engine_enable_rule(injection_engine_t* engine, const char* rule_n
     return false;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 bool injection_engine_disable_rule(injection_engine_t* engine, const char* rule_name) {
     if (!engine || !rule_name) return false;
     
@@ -304,6 +310,8 @@ injection_result_t* injection_engine_get_results(injection_engine_t* engine, uin
     return engine->results;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 void injection_engine_clear_results(injection_engine_t* engine) {
     if (!engine) return;
     
@@ -351,6 +359,8 @@ bool injection_engine_export_results(injection_engine_t* engine, const char* fil
     return true;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 payload_t* create_raw_payload(const char* name, const uint8_t* bytes,
                               uint32_t length, uint32_t target_address) {
     if (!name || !bytes || length == 0) return NULL;
@@ -377,6 +387,8 @@ payload_t* create_raw_payload(const char* name, const uint8_t* bytes,
     return payload;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 payload_t* create_firmware_patch(const char* name, const uint8_t* original_data,
                                 uint32_t original_len, const uint8_t* patched_data,
                                 uint32_t patched_len, uint32_t target_address) {
@@ -407,6 +419,8 @@ payload_t* create_firmware_patch(const char* name, const uint8_t* original_data,
     return payload;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 payload_t* create_boot_image_payload(const char* name, const uint8_t* image_data,
                                      uint32_t image_len) {
     if (!name || !image_data || image_len == 0) return NULL;
@@ -473,6 +487,27 @@ void injection_engine_log(const char* message) {
     printf("[INJECTION] %s\n", message);
 }
 
+// Bounded byte-pattern search. `strstr`/`strchr`-style scanning requires a
+// NUL-terminated haystack, but `data` here is a length-delimited byte
+// buffer with no NUL guarantee, so we search at most `haystack_len` bytes
+// instead of scanning until a NUL byte is found (which could run past the
+// end of the buffer).
+static const uint8_t* bounded_search(const uint8_t* haystack, size_t haystack_len,
+                                      const char* needle, size_t needle_len) {
+    if (needle_len == 0 || needle_len > haystack_len) return NULL;
+
+    for (size_t i = 0; i + needle_len <= haystack_len; i++) {
+        if (memcmp(haystack + i, needle, needle_len) == 0) {
+            return haystack + i;
+        }
+    }
+    return NULL;
+}
+
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/). The address/pattern-trigger bounds
+// fixes above apply to this function regardless, since it is exported
+// via injection_engine.h for external callers.
 bool injection_engine_process_data(injection_engine_t* engine, const uint8_t* data, uint16_t len) {
     if (!engine || !data || len == 0) return false;
     
@@ -491,8 +526,8 @@ bool injection_engine_process_data(injection_engine_t* engine, const uint8_t* da
                 }
                 break;
             case INJECTION_TRIGGER_ON_ADDRESS:
-                if (len >= 4) {
-                    uint32_t address = (data[1] << 24) | (data[2] << 16) | 
+                if (len >= 5) {
+                    uint32_t address = (data[1] << 24) | (data[2] << 16) |
                                       (data[3] << 8) | data[4];
                     if (address == rule->trigger_value.address) {
                         should_trigger = true;
@@ -500,9 +535,19 @@ bool injection_engine_process_data(injection_engine_t* engine, const uint8_t* da
                 }
                 break;
             case INJECTION_TRIGGER_ON_DATA_PATTERN:
-                // Simple pattern matching
-                if (strstr((char*)data, rule->trigger_value.pattern) != NULL) {
-                    should_trigger = true;
+                // Simple pattern matching, bounded to `len` bytes of `data`
+                // and to the (not guaranteed NUL-terminated) pattern buffer,
+                // instead of strstr() scanning past either end for a NUL.
+                {
+                    const char* pattern = rule->trigger_value.pattern;
+                    size_t pattern_maxlen = sizeof(rule->trigger_value.pattern);
+                    size_t pattern_len = 0;
+                    while (pattern_len < pattern_maxlen && pattern[pattern_len] != '\0') {
+                        pattern_len++;
+                    }
+                    if (bounded_search(data, len, pattern, pattern_len) != NULL) {
+                        should_trigger = true;
+                    }
                 }
                 break;
             default:
@@ -541,30 +586,33 @@ bool injection_engine_apply_injection(const injection_rule_t* rule, const uint8_
             
         case INJECTION_MODE_ACTIVE:
             // Append payload
-            *injected_len = original_len + rule->payload->size;
+            if ((uint32_t)original_len + rule->payload->size > UINT16_MAX) return false;
+            *injected_len = (uint16_t)(original_len + rule->payload->size);
             *injected_data = malloc(*injected_len);
             if (!*injected_data) return false;
-            
+
             memcpy(*injected_data, original_data, original_len);
             memcpy(*injected_data + original_len, rule->payload->data, rule->payload->size);
             break;
-            
+
         case INJECTION_MODE_REPLACE:
             // Replace with payload
-            *injected_len = rule->payload->size;
+            if (rule->payload->size > UINT16_MAX) return false;
+            *injected_len = (uint16_t)rule->payload->size;
             *injected_data = malloc(*injected_len);
             if (!*injected_data) return false;
-            
+
             memcpy(*injected_data, rule->payload->data, rule->payload->size);
             break;
-            
+
         case INJECTION_MODE_INSERT:
             // Insert payload at target address
+            if ((uint32_t)original_len + rule->payload->size > UINT16_MAX) return false;
             if (rule->target_address < original_len) {
-                *injected_len = original_len + rule->payload->size;
+                *injected_len = (uint16_t)(original_len + rule->payload->size);
                 *injected_data = malloc(*injected_len);
                 if (!*injected_data) return false;
-                
+
                 memcpy(*injected_data, original_data, rule->target_address);
                 memcpy(*injected_data + rule->target_address, rule->payload->data, rule->payload->size);
                 memcpy(*injected_data + rule->target_address + rule->payload->size,
@@ -572,10 +620,10 @@ bool injection_engine_apply_injection(const injection_rule_t* rule, const uint8_
                        original_len - rule->target_address);
             } else {
                 // Append if target address is beyond original data
-                *injected_len = original_len + rule->payload->size;
+                *injected_len = (uint16_t)(original_len + rule->payload->size);
                 *injected_data = malloc(*injected_len);
                 if (!*injected_data) return false;
-                
+
                 memcpy(*injected_data, original_data, original_len);
                 memcpy(*injected_data + original_len, rule->payload->data, rule->payload->size);
             }

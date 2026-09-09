@@ -1,9 +1,7 @@
 # SPIFault — Build & Verification
 
-> *Quality gate for the HBO NL portfolio. This file answers:
-> "Is this project buildable, runnable, and behaving as documented?"*
-
-> *Last updated: 2026-05-14 — re-validated, no targeted fixes applied in this pass.*
+> This file answers: "Is this project buildable, runnable, and behaving
+> as documented?"
 
 ## 1. Build
 
@@ -65,7 +63,7 @@ SPIFault is a **Fault Campaign Description Framework (FCDF)** for SPI-flash-base
 3. **Simulates** the campaign deterministically with `fcdf/simulator.py::SimulatorBackend` — for each repetition it samples an `OutcomeClass` from a fault-model baseline distribution, biased by `fault.intensity` toward the declared success class and (for voltage glitches) by a voltage-droop heuristic. Given the same `trial.seed` the simulator is reproducible.
 4. **Reports** results to `output/<campaign-id>.json` (machine-readable report) and `output/<campaign-id>.md` (human-readable summary), recording per-class outcome counts, observed `success_rate`, the expected band, and a `within_expected` boolean. CLI exit code reflects `within_expected`.
 5. **Pluggable backends**: a `Backend` interface contract is defined (a callable taking a `Campaign` and returning a `CampaignReport`); the `simulator` is the reference implementation, `chipwhisperer` / `rpi_spidev` / `sigrok` are documented but not implemented.
-6. The C library under `src/` (`spi_core`, `injection_engine`, `glitch_engine`, `spi_framework`) provides the in-memory data model the Python simulator wraps; `examples/basic_example.c` is an end-to-end smoke test.
+6. The C library under `src/` (`spi_core`, `injection_engine`, `glitch_engine`, `spi_framework`) is a standalone in-memory data model with its own JSON export and simulated hardware stubs; `examples/basic_example.c` is an end-to-end smoke test of the C side only. It is **not** currently called by the Python simulator — `fcdf/simulator.py` re-implements its own semantics in pure Python (no FFI/ctypes/cffi binding exists between the two layers). See `docs/architecture.md`.
 
 ### 2.2 Acceptance criteria
 
@@ -147,13 +145,14 @@ Test coverage map:
 
 ### 3.1 Known fragilities
 
-- ~~⚠️ **Dependency drift between README and `tests/requirements.txt`** (README mentioned `jsonschema`, never imported).~~ **FIXED 2026-06-10** — README install comment is now `# PyYAML, pytest`; `fcdf/schema.py`'s hand-rolled dataclass validation is the only validator and needs no extra dep.
-- ~~⚠️ **`Makefile` is POSIX-only** ... not documented in the README's build section.~~ **FIXED 2026-06-10** — the README "C library" section now notes the Makefile is POSIX-only and to build under WSL/MSYS2/Git Bash on Windows.
+- **Dependency drift between README and `tests/requirements.txt`**: not present — the README install comment reads `# PyYAML, pytest`, matching `tests/requirements.txt` exactly; `fcdf/schema.py`'s hand-rolled dataclass validation is the only validator and needs no extra dependency (e.g. `jsonschema`).
+- **`Makefile` is POSIX-only**: documented — the README "C library" section notes the Makefile is POSIX-only and to build under WSL/MSYS2/Git Bash on Windows.
 - ⚠️ **No `pyproject.toml` / `setup.py`**: `fcdf` is run as `python -m fcdf` and tests rely on `tests/conftest.py` inserting the repo root onto `sys.path`. Installation as a package (`pip install .`) is not supported. *(Still open — design choice.)*
-- ~~⚠️ **Backends dict is hard-coded** ... No plugin-discovery mechanism (entry points / registry decorator).~~ **FIXED 2026-06-10** — backends now self-register via the `@register_backend` decorator (`fcdf/registry.py`); the runner resolves by name through `get_backend()` and never needs editing to add a backend. `SimulatorBackend` is the reference registration; `tests/test_registry.py` covers resolution, the no-name error, and name-conflict rejection.
-- ~~⚠️ **CI smoke-test masks failure** ... runs the CLI smoke with `|| true` ...~~ **FIXED 2026-06-10** — the `|| true` was removed; a CLI crash now fails the workflow at the smoke step.
-- ~~⚠️ **`build/` is checked into the repo as an empty directory** even though `.gitignore` excludes `build/`.~~ **FIXED 2026-06-10** — the stray empty `build/` directory was removed (it was never tracked by git, only a local artefact).
+- **Backends dict is hard-coded**: not the case — backends self-register via the `@register_backend` decorator (`fcdf/registry.py`); the runner resolves by name through `get_backend()` and never needs editing to add a backend. `SimulatorBackend` is the reference registration; `tests/test_registry.py` covers resolution, the no-name error, and name-conflict rejection.
+- **CI smoke-test masks failure with `|| true`**: not present — `.github/workflows/python-tests.yml`'s CLI smoke step has no `|| true`; a CLI crash fails the workflow at that step.
+- **`build/` checked into the repo**: not the case — `build/` is excluded by `.gitignore` and is not a tracked path in this repository.
 - ❌ **No real hardware backend implemented** — explicitly out of scope per README §"Backends", but worth noting that "ChipWhisperer / rpi_spidev / sigrok" rows in that table are aspirational.
+- ❌ **`config/framework_config.yaml` is not wired to any code path.** `grep`ping `fcdf/` and `src/` for references to it returns nothing — CSV export, HTML reporting, `template_directory`, boot-phase labels, and logic-analyzer channels described in that file do not exist in the running framework. The Python CLI only ever writes `<id>.json` + `<id>.md`. Treat the file as an unimplemented/aspirational config sketch, not active configuration.
 - ⚠️ **Simulator's outcome distributions are heuristic, not empirically calibrated** — acknowledged in README §"Limitations" and in `fcdf/simulator.py` docstring. Real-hardware noise is not modelled.
 - ⚠️ **EM and laser fault types** are present in the `GlitchType` enum but have no validation rules beyond the generic duration/burst checks, and no specific simulator bias — they degrade to a generic intensity-driven sampling. Documented as placeholders in README §"Limitations".
 
@@ -189,8 +188,8 @@ Test coverage map:
 |-------|--------|-------|
 | README documents build | OK | README §"Running a campaign", §"C library", §"Testing" give exact commands for the Python and C paths and for tests. |
 | Build files present | OK | `Makefile` (C path) and `tests/requirements.txt` (Python deps) both present. No `pyproject.toml` — the Python package is run via `python -m fcdf` thanks to `fcdf/__main__.py`. |
-| Build files internally consistent | OK | `Makefile` targets (`libspi_core.a`, `libinjection.a`, `libglitch.a`, `libspi_framework.a`, `basic_example`) match what `README` advertises. The README install comment now matches `tests/requirements.txt` (`PyYAML, pytest`) — the stale `jsonschema` mention was removed 2026-06-10. |
-| Source structure matches README | OK | `src/spi_core.{c,h}`, `src/injection_engine.{c,h}`, `src/glitch_engine.{c,h}`, `src/spi_framework.{c,h}`, `fcdf/{schema,loader,simulator,cli,__main__,__init__,runner}.py`, `campaigns/*.yaml`, `examples/basic_example.c`, `config/framework_config.yaml`, `tests/`, `docs/` all exist as documented. (Minor: README lists `fcdf/cli.py`; the actual CLI lives in `fcdf/__main__.py` plus `fcdf/runner.py` — same effective surface, slightly different filename.) |
+| Build files internally consistent | OK | `Makefile` targets (`libspi_core.a`, `libinjection.a`, `libglitch.a`, `libspi_framework.a`, `basic_example`) match what `README` advertises. The README install comment matches `tests/requirements.txt` (`PyYAML, pytest`) — no `jsonschema` mention. |
+| Source structure matches README | Mostly OK | `src/spi_core.{c,h}`, `src/injection_engine.{c,h}`, `src/glitch_engine.{c,h}`, `src/spi_framework.{c,h}`, `fcdf/{schema,loader,simulator,registry,__main__,__init__,runner}.py`, `campaigns/*.yaml`, `examples/basic_example.c`, `tests/`, `docs/architecture.md` all exist as documented. `config/framework_config.yaml` exists but is not read by any code in `fcdf/` or `src/` — it is an aspirational/unused config file (see §3.1). README lists `fcdf/cli.py`, which does not exist; the actual CLI lives in `fcdf/__main__.py` plus `fcdf/runner.py`. README also lists four `docs/*` files (`ASCII_Diagram.txt`, `Code_Examples_Deep_Analysis.md`, `SPI_Framework_Deep_Technical_Analysis.md`, `SPI_Framework_Design.md`) that do not exist; only `docs/architecture.md` is present. |
 | Tests exist | OK | `tests/test_schema.py` (11 cases), `tests/test_loader.py`, `tests/test_simulator.py` (7 unit cases + 5 parametrised per-campaign smoke runs), `tests/conftest.py`, `tests/requirements.txt`. |
 | Test invocation documented | OK | README §"Testing": `pip install -r tests/requirements.txt` then `python -m pytest tests/ -v`. CI mirror in `.github/workflows/python-tests.yml`. |
 | Output artifacts named in build files | OK | `Makefile` names the four `.a` archives and `basic_example`. Python CLI (`fcdf/runner.py`) names `output/<campaign-id>.json` and `output/<campaign-id>.md` and the README documents this. ⚠️ Output directory is `output/` per `__main__.py` default; CI workflow uses `/tmp/fcdf-out` via `--out` — consistent because the flag is documented. |

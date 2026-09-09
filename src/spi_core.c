@@ -143,6 +143,8 @@ bool spi_core_add_transaction(spi_core_t* core, const spi_transaction_t* transac
     return true;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 bool spi_core_add_boot_event(spi_core_t* core, const boot_event_t* event) {
     if (!core || !event) return false;
     
@@ -184,6 +186,8 @@ spi_transaction_t* spi_core_get_transactions(spi_core_t* core, uint32_t* count) 
     return core->transactions;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 boot_event_t* spi_core_get_boot_events(spi_core_t* core, uint32_t* count) {
     if (!core || !count) return NULL;
     
@@ -238,6 +242,8 @@ bool spi_core_export_data(spi_core_t* core, const char* filename) {
     return true;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 void spi_core_clear_data(spi_core_t* core) {
     if (!core) return;
     
@@ -263,6 +269,9 @@ void spi_core_clear_data(spi_core_t* core) {
     spi_core_log("Data cleared");
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/). glitch_engine.c's execution_time_us
+// field uses time(NULL) (second resolution) instead of this function.
 uint64_t get_timestamp_us(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);

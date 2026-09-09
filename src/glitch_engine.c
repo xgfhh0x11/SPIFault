@@ -133,6 +133,8 @@ void glitch_engine_destroy(glitch_engine_t* engine) {
     glitch_engine_log("Glitch engine destroyed");
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 bool glitch_engine_setup_hardware(glitch_engine_t* engine) {
     if (!engine) return false;
     
@@ -142,6 +144,9 @@ bool glitch_engine_setup_hardware(glitch_engine_t* engine) {
     return true;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/). As a result, glitch_engine_start_glitching's
+// glitch_count guard is never satisfied via this file alone.
 bool glitch_engine_add_glitch_parameters(glitch_engine_t* engine, const glitch_parameters_t* params) {
     if (!engine || !params) return false;
     
@@ -166,6 +171,8 @@ bool glitch_engine_add_glitch_parameters(glitch_engine_t* engine, const glitch_p
     return true;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 bool glitch_engine_remove_glitch_parameters(glitch_engine_t* engine, uint32_t index) {
     if (!engine || index >= engine->glitch_count) return false;
     
@@ -204,6 +211,9 @@ void glitch_engine_stop_glitching(glitch_engine_t* engine) {
     glitch_engine_log("Glitching stopped");
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/). The example instead exercises the
+// simpler glitch_engine_single_glitch/burst_glitch path below.
 bool glitch_engine_execute_glitch(glitch_engine_t* engine, const glitch_parameters_t* params) {
     if (!engine || !params) return false;
     
@@ -307,6 +317,8 @@ bool glitch_engine_add_fault_parameters(glitch_engine_t* engine, const fault_par
     return true;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 bool glitch_engine_remove_fault_parameters(glitch_engine_t* engine, uint32_t index) {
     if (!engine || index >= engine->fault_count) return false;
     
@@ -443,6 +455,8 @@ bool glitch_engine_single_glitch(glitch_engine_t* engine, uint32_t duration_ns) 
     return true;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 bool glitch_engine_burst_glitch(glitch_engine_t* engine, uint32_t count, uint32_t duration_ns, uint32_t interval_ns) {
     if (!engine) return false;
     
@@ -477,6 +491,8 @@ fault_result_t* glitch_engine_get_fault_results(glitch_engine_t* engine, uint32_
     return engine->fault_results;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 void glitch_engine_clear_results(glitch_engine_t* engine) {
     if (!engine) return;
     
@@ -596,6 +612,8 @@ fault_parameters_t* create_bypass_fault(uint32_t target_address, uint8_t bit_pos
     return fault;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 fault_parameters_t* create_instruction_skip_fault(uint32_t target_address) {
     fault_parameters_t* fault = malloc(sizeof(fault_parameters_t));
     if (!fault) return NULL;
@@ -617,6 +635,8 @@ fault_parameters_t* create_instruction_skip_fault(uint32_t target_address) {
     return fault;
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 fault_parameters_t* create_branch_override_fault(uint32_t target_address) {
     fault_parameters_t* fault = malloc(sizeof(fault_parameters_t));
     if (!fault) return NULL;

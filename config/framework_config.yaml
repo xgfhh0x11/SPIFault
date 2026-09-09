@@ -1,9 +1,15 @@
-# SPI fault-campaign simulator — runtime configuration.
+# SPI fault-campaign simulator — planned runtime configuration.
 #
-# This file configures the *framework process* (logging, output paths,
-# backend wiring). Fault-injection *campaigns* themselves are described
-# in separate YAML files under campaigns/ and follow the FCDF schema
-# (see fcdf/schema.py).
+# NOT CURRENTLY WIRED INTO ANY EXECUTION PATH. Nothing in fcdf/ or src/
+# reads this file. It is a sketch of configuration the framework process
+# (logging, output paths, backend wiring) could eventually accept — CSV
+# export, HTML reporting, template directories, boot-phase labels, and
+# logic-analyzer settings described below are aspirational, not
+# implemented. The Python CLI's actual, current output is always
+# `<id>.json` + `<id>.md` written under `output/` (or --out).
+#
+# Fault-injection *campaigns* themselves are described in separate YAML
+# files under campaigns/ and follow the FCDF schema (see fcdf/schema.py).
 
 framework:
   name: "SPI Fault-Campaign Simulator"

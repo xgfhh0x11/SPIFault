@@ -45,13 +45,16 @@ examples/
   basic_example.c       End-to-end smoke test (in-process simulator)
 
 config/
-  framework_config.yaml Runtime configuration (logging, backends)
+  framework_config.yaml Aspirational config sketch — not read by any code
+                         path in fcdf/ or src/ (see "Limitations")
 
 fcdf/                 Python: FCDF schema, validator, loader, runner
   schema.py             Campaign dataclasses + JSON-schema-ish validation
   loader.py             YAML → Campaign object
   simulator.py          Reference simulator backend
-  cli.py                python -m fcdf <campaign.yaml>
+  registry.py            Backend registration (@register_backend)
+  runner.py              Resolves a backend and runs a campaign
+  __main__.py            python -m fcdf <campaign.yaml>
 
 campaigns/            Sample campaigns (reproducible, version-tagged)
   voltage_glitch_basic.yaml
@@ -63,10 +66,7 @@ campaigns/            Sample campaigns (reproducible, version-tagged)
 tests/                Python pytest suite
 
 docs/
-  ASCII_Diagram.txt
-  Code_Examples_Deep_Analysis.md
-  SPI_Framework_Deep_Technical_Analysis.md
-  SPI_Framework_Design.md
+  architecture.md
 ```
 
 ## Scope and posture
@@ -161,8 +161,15 @@ defines the contract.
 
 ## C library
 
-The C library under `src/` implements the in-memory data model that the
-Python simulator wraps. Build:
+The C library under `src/` is a standalone in-memory data model (SPI
+transaction log, injection-rule engine, glitch/fault parameter model)
+with its own JSON export and `examples/basic_example.c` smoke test. It
+is **not** currently wired to the Python simulator — `fcdf/simulator.py`
+re-implements its own semantics directly in Python, and there is no
+FFI/ctypes/cffi binding between the two layers today. See
+`docs/architecture.md` for the current split and the planned direction.
+
+Build:
 
 ```bash
 make all          # libspi_core.a, libinjection.a, libglitch.a, libspi_framework.a
@@ -194,6 +201,10 @@ Continuous integration runs the Python suite on every push under
   bit-flip / byte-corruption / instruction-skip / branch-override fault
   models. EM and laser fault injection are placeholders.
 - No real hardware backend is implemented in this repository.
+- `config/framework_config.yaml` is a planned/aspirational configuration
+  sketch (CSV/HTML export, template directory, boot-phase labels, logic
+  analyzer channels). It is not read by `fcdf/` or `src/` today; the CLI
+  only ever writes `<id>.json` + `<id>.md`.
 
 ## References
 

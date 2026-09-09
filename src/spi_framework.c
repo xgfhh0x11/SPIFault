@@ -120,6 +120,8 @@ void spi_framework_stop(spi_framework_t* framework) {
     spi_framework_log("SPI framework stopped");
 }
 
+// NOTE: not called from any path in this repository (public API only —
+// no caller in src/ or examples/).
 bool spi_framework_is_active(spi_framework_t* framework) {
     if (!framework) return false;
     return framework->is_active;
