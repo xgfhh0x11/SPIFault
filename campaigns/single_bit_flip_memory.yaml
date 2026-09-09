@@ -1,0 +1,32 @@
+schema_version: 1
+
+campaign:
+  id: sbf-001
+  name: "Single-bit flip — memory region"
+  description: |
+    Models a single-bit fault in a 64-bit memory word. Useful as a
+    Rowhammer-style baseline.
+
+target:
+  device: simulator
+  component: memory
+  address: 0x000000007FFFE000
+
+fault:
+  model: single_bit_flip
+  intensity: 0.5
+  bit_position: 17
+
+glitch:
+  type: electromagnetic
+  duration_ns: 200
+  trigger_delay_ns: 0
+
+trial:
+  repetitions: 200
+  seed: 0xDEADBEEF
+
+expected_outcome:
+  classification: data_corruption
+  success_rate_min: 0.10
+  success_rate_max: 0.95

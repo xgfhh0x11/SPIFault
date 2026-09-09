@@ -1,0 +1,124 @@
+# SPI fault-campaign simulator — runtime configuration.
+#
+# This file configures the *framework process* (logging, output paths,
+# backend wiring). Fault-injection *campaigns* themselves are described
+# in separate YAML files under campaigns/ and follow the FCDF schema
+# (see fcdf/schema.py).
+
+framework:
+  name: "SPI Fault-Campaign Simulator"
+  version: "1.0.0"
+  log_level: "INFO"        # DEBUG | INFO | WARN | ERROR
+  output_directory: "output"
+
+# SPI core configuration.
+spi_core:
+  # Backend that produces SPI transactions for the core to log.
+  # Only the in-process simulator is implemented today; hardware backends
+  # are documented integration points (see README, "Backends").
+  backend: "simulator"     # simulator | chipwhisperer | rpi_spidev
+  buffer_size: 10000
+  capture_timeout_seconds: 30.0
+  analysis_interval_seconds: 1.0
+
+  # Boot-stage labels recorded alongside transactions, for downstream
+  # filtering of SPI traffic by boot phase.
+  boot_phases:
+    - pre_boot
+    - early_init
+    - uefi_init
+    - secure_boot
+    - os_loader
+    - post_boot
+
+# Injection engine configuration.
+injection_engine:
+  backend: "simulator"
+  injection_timeout_seconds: 5.0
+
+  # Payload storage. The simulator keeps payloads in memory; if a future
+  # backend persists them, this is the on-disk root.
+  payload_store:
+    path: "payloads"
+
+# Glitch engine configuration.
+glitch_engine:
+  backend: "simulator"
+
+  # Voltage-control envelope. The simulator clamps requested glitch
+  # parameters to this envelope; a real hardware backend would enforce
+  # the same envelope at the device layer.
+  voltage_control:
+    voltage_range_v: [0.0, 5.0]
+    resolution_v: 0.001
+    max_frequency_hz: 1_000_000
+
+  # Built-in voltage profiles available to campaigns by name.
+  voltage_profiles:
+    - name: "standard_glitch"
+      base_voltage_v: 3.3
+      glitch_voltage_v: 0.5
+      glitch_duration_ns: 10000
+      rise_time_ns: 1000
+      fall_time_ns: 1000
+      frequency_hz: 1000
+      duty_cycle: 0.1
+
+    - name: "narrow_glitch"
+      base_voltage_v: 3.3
+      glitch_voltage_v: 0.3
+      glitch_duration_ns: 5000
+      rise_time_ns: 500
+      fall_time_ns: 500
+      frequency_hz: 2000
+      duty_cycle: 0.2
+
+  # Fault models that campaigns may reference.
+  fault_models:
+    - single_bit_flip
+    - multi_bit_flip
+    - byte_corruption
+    - instruction_skip
+    - branch_override
+    - memory_corruption
+    - register_corruption
+
+  # Component categories that fault models may target. These describe
+  # what the simulator pretends to affect; they do not give any
+  # hardware-side capability.
+  target_components:
+    - cpu_core
+    - memory
+    - cache
+    - registers
+    - bus
+    - clock
+    - power
+
+# Output settings.
+output:
+  data_export:
+    enabled: true
+    formats: [json, csv]
+    compression: false
+
+  reporting:
+    enabled: true
+    formats: [markdown, html]
+    template_directory: "templates"
+    output_directory: "reports"
+
+# Hardware-interface settings (documented integration points, not used by
+# the in-process simulator).
+hardware:
+  spi_interface:
+    mode: 0
+    bits_per_word: 8
+    max_speed_hz: 1_000_000
+    cs_active_high: false
+
+  logic_analyzer:
+    enabled: false
+    device_path: ""
+    sample_rate: 1_000_000
+    channels: 8

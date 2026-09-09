@@ -1,0 +1,34 @@
+schema_version: 1
+
+campaign:
+  id: is-001
+  name: "Instruction skip — branch site"
+  description: |
+    Simulates an instruction-skip fault aimed at a branch-decision site.
+    Mirrors the canonical setup from Barenghi et al. on fault attacks
+    against cryptographic devices (Proc. IEEE, 2012).
+
+target:
+  device: simulator
+  component: cpu_core
+  address: 0x0000000040001234
+
+fault:
+  model: instruction_skip
+  intensity: 0.6
+
+glitch:
+  type: clock
+  base_clock_hz: 1_000_000_000
+  glitch_clock_hz: 1_200_000_000
+  duration_ns: 20
+  trigger_delay_ns: 4500
+
+trial:
+  repetitions: 150
+  seed: 0xFEEDFACE
+
+expected_outcome:
+  classification: control_flow_diversion
+  success_rate_min: 0.05
+  success_rate_max: 0.90

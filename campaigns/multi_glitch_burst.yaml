@@ -1,0 +1,35 @@
+schema_version: 1
+
+campaign:
+  id: mg-001
+  name: "Multi-glitch burst — voltage"
+  description: |
+    Repeated short voltage glitches in a single burst window, modelling
+    successive faults on consecutive instructions or pipeline stages.
+
+target:
+  device: simulator
+  component: cpu_core
+  address: 0xFFFFFFFF80100000
+
+fault:
+  model: multi_bit_flip
+  intensity: 0.5
+
+glitch:
+  type: voltage
+  base_voltage_v: 1.10
+  glitch_voltage_v: 0.70
+  duration_ns: 30
+  trigger_delay_ns: 8000
+  burst_count: 5
+  burst_interval_ns: 200
+
+trial:
+  repetitions: 80
+  seed: 0x1234ABCD
+
+expected_outcome:
+  classification: data_corruption
+  success_rate_min: 0.20
+  success_rate_max: 0.99

@@ -1,0 +1,34 @@
+schema_version: 1
+
+campaign:
+  id: sbr-001
+  name: "SPI boot read — byte-corruption replay"
+  description: |
+    Replays a recorded SPI boot read at the simulator, applying byte
+    corruption to the response payload to model a corrupted firmware
+    boot path.
+
+target:
+  device: simulator
+  component: spi_bus
+  address: 0x00000000
+
+fault:
+  model: byte_corruption
+  intensity: 0.4
+
+glitch:
+  type: voltage
+  base_voltage_v: 3.30
+  glitch_voltage_v: 2.10
+  duration_ns: 150
+  trigger_delay_ns: 0
+
+trial:
+  repetitions: 50
+  seed: 0xB00710AD
+
+expected_outcome:
+  classification: data_corruption
+  success_rate_min: 0.10
+  success_rate_max: 0.95

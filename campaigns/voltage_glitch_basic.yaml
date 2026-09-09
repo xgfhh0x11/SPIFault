@@ -1,0 +1,34 @@
+schema_version: 1
+
+campaign:
+  id: vg-001
+  name: "Voltage glitch — basic Plundervolt-shape"
+  description: |
+    Single voltage-glitch trial against a simulated MSR write at the
+    addressed location. Mirrors the timing envelope from Murdock et al.
+    (Plundervolt, IEEE S&P 2020).
+
+target:
+  device: simulator
+  component: cpu_core
+  address: 0xFFFFFFFF80000000
+
+fault:
+  model: instruction_skip
+  intensity: 0.7
+
+glitch:
+  type: voltage
+  base_voltage_v: 1.20
+  glitch_voltage_v: 0.85
+  duration_ns: 50
+  trigger_delay_ns: 12000
+
+trial:
+  repetitions: 100
+  seed: 0xC0FFEE
+
+expected_outcome:
+  classification: instruction_corruption
+  success_rate_min: 0.10
+  success_rate_max: 0.95

@@ -1,0 +1,29 @@
+# Build outputs
+build/
+dist/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+
+# Output / generated reports
+output/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+.venv/
+venv/
+
+# IDE state
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
